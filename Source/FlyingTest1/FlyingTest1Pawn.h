@@ -11,8 +11,11 @@ class AFlyingTest1Pawn : public APawn
 	GENERATED_BODY()
 
 	/** StaticMesh component that will be the visuals for our flying pawn */
+		
+	//class UStaticMeshComponent;
+
 	UPROPERTY(Category = Mesh, VisibleDefaultsOnly, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
-	class UStaticMeshComponent* PlaneMesh;
+		UStaticMeshComponent* PlaneMesh;
 
 	/** Spring arm that will offset the camera */
 	UPROPERTY(Category = Camera, VisibleDefaultsOnly, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
@@ -44,6 +47,13 @@ protected:
 	/** Bound to the horizontal axis */
 	void MoveRightInput(float Val);
 
+	/** Camera Lock toggle */
+	void CameraLockToggle();
+
+	/** Air Roll functions */
+	void OnAirRollPress();
+	void OnAirRollRelease();
+
 private:
 
 	/** How quickly forward speed changes */
@@ -73,6 +83,27 @@ private:
 
 	/** Current roll speed */
 	float CurrentRollSpeed;
+
+	/** Will be set to the current state of the air roll key*/
+	bool AirRollOn;
+
+	UPROPERTY(EditAnywhere)
+	float airRollAmount = 5.0f;
+
+	UPROPERTY(EditAnywhere)
+	bool mirroredVertical = false;
+
+
+	/** Gravity acceleration (g)*/
+	UPROPERTY(EditAnywhere)
+	float g;
+
+
+
+	void printToScreenDebug(FTransform transform);
+	void printToScreenDebug(FVector vector);
+	void printToScreenDebug(float floatVal);
+	void printToScreenDebug(FString stringIn);
 
 public:
 	/** Returns PlaneMesh subobject **/

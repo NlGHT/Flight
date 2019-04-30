@@ -8,6 +8,7 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "Engine/World.h"
 #include "Engine/StaticMesh.h"
+#include "Engine.h"
 
 AFlyingTest1Pawn::AFlyingTest1Pawn()
 {
@@ -32,7 +33,7 @@ AFlyingTest1Pawn::AFlyingTest1Pawn()
 	SpringArm->SetupAttachment(RootComponent);	// Attach SpringArm to RootComponent
 	SpringArm->TargetArmLength = 160.0f; // The camera follows at this distance behind the character	
 	SpringArm->SocketOffset = FVector(0.f,0.f,60.f);
-	SpringArm->bEnableCameraLag = false;	// Do not allow camera to lag
+	SpringArm->bEnableCameraLag = true;	// Do not allow camera to lag
 	SpringArm->CameraLagSpeed = 15.f;
 
 	// Create camera component 
@@ -41,11 +42,13 @@ AFlyingTest1Pawn::AFlyingTest1Pawn()
 	Camera->bUsePawnControlRotation = false; // Don't rotate camera with controller
 
 	// Set handling parameters
-	Acceleration = 500.f;
-	TurnSpeed = 50.f;
+	Acceleration = 3000.f;
+	TurnSpeed = 100.f;
 	MaxSpeed = 4000.f;
-	MinSpeed = 500.f;
+	MinSpeed = 0.f;
 	CurrentForwardSpeed = 500.f;
+
+	g = 9.81;
 }
 
 void AFlyingTest1Pawn::Tick(float DeltaSeconds)
@@ -53,7 +56,7 @@ void AFlyingTest1Pawn::Tick(float DeltaSeconds)
 	const FVector LocalMove = FVector(CurrentForwardSpeed * DeltaSeconds, 0.f, 0.f);
 
 	// Move plan forwards (with sweep so we stop when we collide with things)
-	AddActorLocalOffset(LocalMove, true);
+	PlaneMesh->AddLocalOffset(LocalMove, true);
 
 	// Calculate change in rotation this frame
 	FRotator DeltaRotation(0,0,0);
@@ -62,7 +65,14 @@ void AFlyingTest1Pawn::Tick(float DeltaSeconds)
 	DeltaRotation.Roll = CurrentRollSpeed * DeltaSeconds;
 
 	// Rotate plane
-	AddActorLocalRotation(DeltaRotation);
+	//AddActorLocalRotation(DeltaRotation);
+	PlaneMesh->AddLocalRotation(DeltaRotation);
+
+	float F = PlaneMesh->GetMass() * g;
+	float velocityVectorLength = PlaneMesh->GetComponentVelocity().Size();
+	float lerpedGravity = FMath::Lerp(0.f, F, velocityVectorLength);
+
+	PlaneMesh->AddForce(FVector(0, 0, lerpedGravity));
 
 	// Call any parent class Tick implementation
 	Super::Tick(DeltaSeconds);
@@ -87,6 +97,10 @@ void AFlyingTest1Pawn::SetupPlayerInputComponent(class UInputComponent* PlayerIn
 	PlayerInputComponent->BindAxis("Thrust", this, &AFlyingTest1Pawn::ThrustInput);
 	PlayerInputComponent->BindAxis("MoveUp", this, &AFlyingTest1Pawn::MoveUpInput);
 	PlayerInputComponent->BindAxis("MoveRight", this, &AFlyingTest1Pawn::MoveRightInput);
+	PlayerInputComponent->BindAction("CameraLock", IE_Pressed, this, &AFlyingTest1Pawn::CameraLockToggle);
+
+	PlayerInputComponent->BindAction("AirRoll", IE_Pressed, this, &AFlyingTest1Pawn::OnAirRollPress);
+	PlayerInputComponent->BindAction("AirRoll", IE_Released, this, &AFlyingTest1Pawn::OnAirRollRelease);
 }
 
 void AFlyingTest1Pawn::ThrustInput(float Val)
@@ -103,6 +117,8 @@ void AFlyingTest1Pawn::ThrustInput(float Val)
 
 void AFlyingTest1Pawn::MoveUpInput(float Val)
 {
+	if (mirroredVertical) Val = -Val;
+
 	// Target pitch speed is based in input
 	float TargetPitchSpeed = (Val * TurnSpeed * -1.f);
 
@@ -115,19 +131,94 @@ void AFlyingTest1Pawn::MoveUpInput(float Val)
 
 void AFlyingTest1Pawn::MoveRightInput(float Val)
 {
-	// Target yaw speed is based on input
-	float TargetYawSpeed = (Val * TurnSpeed);
+	if (AirRollOn)
+	{
+		// Air rolling
+		PlaneMesh->AddLocalRotation(FRotator(0, 0, airRollAmount*Val));
+		printToScreenDebug("Air Rolling");
+	}
+	else
+	{
+		// Target yaw speed is based on input
+		float TargetYawSpeed = (Val * TurnSpeed);
 
-	// Smoothly interpolate to target yaw speed
-	CurrentYawSpeed = FMath::FInterpTo(CurrentYawSpeed, TargetYawSpeed, GetWorld()->GetDeltaSeconds(), 2.f);
+		// Smoothly interpolate to target yaw speed
+		CurrentYawSpeed = FMath::FInterpTo(CurrentYawSpeed, TargetYawSpeed, GetWorld()->GetDeltaSeconds(), 2.f);
 
-	// Is there any left/right input?
-	const bool bIsTurning = FMath::Abs(Val) > 0.2f;
+		// Is there any left/right input?
+		const bool bIsTurning = FMath::Abs(Val) > 0.2f;
 
-	// If turning, yaw value is used to influence roll
-	// If not turning, roll to reverse current roll value.
-	float TargetRollSpeed = bIsTurning ? (CurrentYawSpeed * 0.5f) : (GetActorRotation().Roll * -2.f);
+		// If turning, yaw value is used to influence roll
+		// If not turning, roll to reverse current roll value.
+		float TargetRollSpeed = bIsTurning ? (CurrentYawSpeed * 0.5f) : (GetActorRotation().Roll * -2.f);
 
-	// Smoothly interpolate roll speed
-	CurrentRollSpeed = FMath::FInterpTo(CurrentRollSpeed, TargetRollSpeed, GetWorld()->GetDeltaSeconds(), 2.f);
+		// Smoothly interpolate roll speed
+		CurrentRollSpeed = FMath::FInterpTo(CurrentRollSpeed, TargetRollSpeed, GetWorld()->GetDeltaSeconds(), 2.f);
+	}	
+}
+
+void AFlyingTest1Pawn::CameraLockToggle()
+{
+	if (SpringArm->bInheritPitch)
+	{
+		// Camera was locked before
+		SpringArm->bInheritPitch = false;
+		SpringArm->bInheritRoll = false;
+		SpringArm->bInheritYaw = false;
+
+		SpringArm->SetRelativeRotation(PlaneMesh->GetComponentRotation());
+
+		//printToScreenDebug(lastCameraLockRotation.Vector());
+	}
+	else
+	{
+		// Camera was not locked before
+
+		SpringArm->bInheritPitch = true;
+		SpringArm->bInheritRoll = true;
+		SpringArm->bInheritYaw = true;
+
+		FRotator currentRotation = PlaneMesh->GetComponentRotation();
+		//printToScreenDebug(currentRotation.Vector());
+
+		SpringArm->SetRelativeRotation(FRotator(0));
+		//SpringArm->AddLocalRotation(FRotator(currentRotation.Pitch - lastCameraLockRotation.Pitch, currentRotation.Yaw - lastCameraLockRotation.Yaw, currentRotation.Roll - lastCameraLockRotation.Roll));
+	}
+}
+
+void AFlyingTest1Pawn::OnAirRollPress()
+{
+	AirRollOn = true;
+}
+
+void AFlyingTest1Pawn::OnAirRollRelease()
+{
+	AirRollOn = false;
+}
+
+
+
+
+
+
+void AFlyingTest1Pawn::printToScreenDebug(FTransform transform)
+{
+	FVector transformVector;
+	transform.TransformVector(transformVector);
+	GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(TEXT("Ground transform vector: X > %f, Y > %f, Z > %f"), transformVector.X, transformVector.Y, transformVector.Z));
+}
+
+void AFlyingTest1Pawn::printToScreenDebug(FVector vector)
+{
+	GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(TEXT("Vector: X > %f, Y > %f, Z > %f"), vector.X, vector.Y, vector.Z));
+}
+
+void AFlyingTest1Pawn::printToScreenDebug(float floatVal)
+{
+	GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(TEXT("float: %f"), floatVal));
+}
+
+void AFlyingTest1Pawn::printToScreenDebug(FString stringIn)
+{
+	GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, stringIn);
 }

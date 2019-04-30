@@ -89,7 +89,7 @@ void AMapGenerate::spawnSphere(FVector scaledBounds, FVector rootPosition)
 	//printToScreenDebug(differenceOfRootAndScaledBounds);
 	//printToScreenDebug((rootPosition.Z + scaledBounds.Z));
 	float RNG = ((float)FMath::Rand()) / 32767 * zDisplacement * (rootPosition.Z + scaledBounds.Z) - 20*scaledBounds.Z - zDisplacement * scaledBounds.Z;
-	printToScreenDebug(RNG);
+	//printToScreenDebug(RNG);
 
 	FVector randomSpawnLocation = FVector(FMath::RandRange(rootPosition.X - halfDimensions.X, rootPosition.X + halfDimensions.X), FMath::RandRange(rootPosition.Y - halfDimensions.Y, rootPosition.Y + halfDimensions.Y), RNG);
 
