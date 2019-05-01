@@ -57,19 +57,19 @@ protected:
 private:
 
 	/** How quickly forward speed changes */
-	UPROPERTY(Category=Plane, EditAnywhere)
+	UPROPERTY(Category = FlightSettings, EditAnywhere)
 	float Acceleration;
 
 	/** How quickly pawn can steer */
-	UPROPERTY(Category=Plane, EditAnywhere)
+	UPROPERTY(Category = FlightSettings, EditAnywhere)
 	float TurnSpeed;
 
 	/** Max forward speed */
-	UPROPERTY(Category = Pitch, EditAnywhere)
+	UPROPERTY(Category = FlightSettings, EditAnywhere)
 	float MaxSpeed;
 
 	/** Min forward speed */
-	UPROPERTY(Category=Yaw, EditAnywhere)
+	UPROPERTY(Category = FlightSettings, EditAnywhere)
 	float MinSpeed;
 
 	/** Current forward speed */
@@ -87,16 +87,25 @@ private:
 	/** Will be set to the current state of the air roll key*/
 	bool AirRollOn;
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = FlightSettings)
 	float airRollAmount = 5.0f;
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = FlightSettings)
 	bool mirroredVertical = false;
+
+	UPROPERTY(EditAnywhere, Category=CameraSettings)
+	float ArmLength = 400.f;
+
+	UPROPERTY(EditAnywhere, Category = CameraSettings)
+	float CameraHeight = 100.0f;
 
 
 	/** Gravity acceleration (g)*/
 	UPROPERTY(EditAnywhere)
 	float g;
+
+	// Gotten from MapGenerate.h
+	FVector getScaledBounds(UStaticMeshComponent* meshComponent);
 
 
 

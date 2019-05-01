@@ -31,9 +31,9 @@ AFlyingTest1Pawn::AFlyingTest1Pawn()
 	// Create a spring arm component
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm0"));
 	SpringArm->SetupAttachment(RootComponent);	// Attach SpringArm to RootComponent
-	SpringArm->TargetArmLength = 160.0f; // The camera follows at this distance behind the character	
-	SpringArm->SocketOffset = FVector(0.f,0.f,60.f);
-	SpringArm->bEnableCameraLag = true;	// Do not allow camera to lag
+	SpringArm->TargetArmLength = ArmLength; // The camera follows at this distance behind the character	
+	SpringArm->SocketOffset = FVector(0.f,0.f,CameraHeight);
+	SpringArm->bEnableCameraLag = false;	// Do not allow camera to lag
 	SpringArm->CameraLagSpeed = 15.f;
 
 	// Create camera component 
@@ -54,6 +54,8 @@ AFlyingTest1Pawn::AFlyingTest1Pawn()
 void AFlyingTest1Pawn::Tick(float DeltaSeconds)
 {
 	const FVector LocalMove = FVector(CurrentForwardSpeed * DeltaSeconds, 0.f, 0.f);
+	//const FVector LocalMove = FVector(0.f, 0.f, CurrentForwardSpeed * DeltaSeconds);
+	//const FVector LocalMove = FVector(0.f, CurrentForwardSpeed * DeltaSeconds, 0.f);
 
 	// Move plan forwards (with sweep so we stop when we collide with things)
 	PlaneMesh->AddLocalOffset(LocalMove, true);
@@ -73,6 +75,12 @@ void AFlyingTest1Pawn::Tick(float DeltaSeconds)
 	float lerpedGravity = FMath::Lerp(0.f, F, velocityVectorLength);
 
 	PlaneMesh->AddForce(FVector(0, 0, lerpedGravity));
+	FTransform planeTransform = PlaneMesh->GetComponentTransform();
+	FVector planeLocation = planeTransform.GetLocation();
+	FRotator planeRotation = planeTransform.GetRotation().Rotator();
+	FVector planeScaledBounds = getScaledBounds(PlaneMesh);
+	//PlaneMesh->AddForceAtLocationLocal();
+	//PlaneMesh->AddForceAtLocation()
 
 	// Call any parent class Tick implementation
 	Super::Tick(DeltaSeconds);
@@ -135,7 +143,7 @@ void AFlyingTest1Pawn::MoveRightInput(float Val)
 	{
 		// Air rolling
 		PlaneMesh->AddLocalRotation(FRotator(0, 0, airRollAmount*Val));
-		printToScreenDebug("Air Rolling");
+		//printToScreenDebug("Air Rolling");
 	}
 	else
 	{
@@ -200,6 +208,25 @@ void AFlyingTest1Pawn::OnAirRollRelease()
 
 
 
+
+FVector AFlyingTest1Pawn::getScaledBounds(UStaticMeshComponent * meshComponent)
+{
+	FVector groundMin;
+	FVector groundMax;
+
+	meshComponent->GetLocalBounds(groundMin, groundMax);
+	FVector dimensions = FVector(groundMax.X - groundMin.X, groundMax.Y - groundMin.Y, groundMax.Z - groundMin.Z);
+
+	FVector scale = meshComponent->GetComponentTransform().GetScale3D();
+
+	//printToScreenDebug(transformVector);
+	//printToScreenDebug(scale);
+
+	FVector scaledSize = FVector(dimensions.X * scale.X, dimensions.Y * scale.Y, dimensions.Z * scale.Z);
+
+
+	return scaledSize;
+}
 
 void AFlyingTest1Pawn::printToScreenDebug(FTransform transform)
 {
