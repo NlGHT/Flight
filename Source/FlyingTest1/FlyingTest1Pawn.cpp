@@ -54,11 +54,30 @@ AFlyingTest1Pawn::AFlyingTest1Pawn()
 void AFlyingTest1Pawn::Tick(float DeltaSeconds)
 {
 	const FVector LocalMove = FVector(CurrentForwardSpeed * DeltaSeconds, 0.f, 0.f);
+
+	if (AirRollOn)
+	{
+		//FTransform planeTransform = PlaneMesh->GetComponentTransform();
+		//FVector planeLocation = planeTransform.GetLocation();
+		//FRotator planeRotation = planeTransform.GetRotation().Rotator();
+		//FVector planeScaledBounds = getScaledBounds(PlaneMesh);
+		//float mass = PlaneMesh->GetMass();
+		float velocityForward = CurrentForwardSpeed * DeltaSeconds;
+		//printToScreenDebug(lastRotation.Vector());
+		FVector velocityComponents = FVector(FMath::Cos(lastRotationRadians.X)*velocityForward, FMath::Cos(lastRotationRadians.Y)*velocityForward, FMath::Cos(lastRotationRadians.Z)*velocityForward);
+
+		PlaneMesh->AddWorldOffset(velocityComponents, true);
+	}
+	else
+	{
+		PlaneMesh->AddLocalOffset(LocalMove, true);
+	}
+	
 	//const FVector LocalMove = FVector(0.f, 0.f, CurrentForwardSpeed * DeltaSeconds);
 	//const FVector LocalMove = FVector(0.f, CurrentForwardSpeed * DeltaSeconds, 0.f);
 
 	// Move plan forwards (with sweep so we stop when we collide with things)
-	PlaneMesh->AddLocalOffset(LocalMove, true);
+	
 
 	// Calculate change in rotation this frame
 	FRotator DeltaRotation(0,0,0);
@@ -75,10 +94,7 @@ void AFlyingTest1Pawn::Tick(float DeltaSeconds)
 	float lerpedGravity = FMath::Lerp(0.f, F, velocityVectorLength);
 
 	PlaneMesh->AddForce(FVector(0, 0, lerpedGravity));
-	FTransform planeTransform = PlaneMesh->GetComponentTransform();
-	FVector planeLocation = planeTransform.GetLocation();
-	FRotator planeRotation = planeTransform.GetRotation().Rotator();
-	FVector planeScaledBounds = getScaledBounds(PlaneMesh);
+	
 	//PlaneMesh->AddForceAtLocationLocal();
 	//PlaneMesh->AddForceAtLocation()
 
@@ -196,6 +212,15 @@ void AFlyingTest1Pawn::CameraLockToggle()
 
 void AFlyingTest1Pawn::OnAirRollPress()
 {
+	FRotator currentRotation = PlaneMesh->GetComponentRotation();
+	//currentRotation.Normalize();
+	float rotationX = (FMath::Clamp(currentRotation.Pitch, -180.f, 180.0f));
+	float rotationY = (FMath::Clamp(currentRotation.Yaw, -180.f, 180.0f));
+	float rotationZ = (FMath::Clamp(currentRotation.Roll, -180.f, 180.0f));
+	printToScreenDebug(rotationX);
+	printToScreenDebug(rotationY);
+	printToScreenDebug(rotationZ);
+	lastRotationRadians = FVector(rotationX, rotationY, rotationZ);
 	AirRollOn = true;
 }
 

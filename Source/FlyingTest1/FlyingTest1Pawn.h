@@ -108,6 +108,9 @@ private:
 	FVector getScaledBounds(UStaticMeshComponent* meshComponent);
 
 
+	FVector lastRotationRadians;
+
+
 
 	void printToScreenDebug(FTransform transform);
 	void printToScreenDebug(FVector vector);
