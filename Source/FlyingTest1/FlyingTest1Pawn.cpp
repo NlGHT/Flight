@@ -63,8 +63,7 @@ void AFlyingTest1Pawn::Tick(float DeltaSeconds)
 	}
 	else
 	{
-		PlaneMesh->AddLocalOffset(LocalMove, true);
-		
+		PlaneMesh->AddLocalOffset(LocalMove, true);	
 	}
 	
 
@@ -125,13 +124,13 @@ void AFlyingTest1Pawn::ThrustInput(float Val)
 
 void AFlyingTest1Pawn::MoveUpInput(float Val)
 {
-	if (mirroredVertical) Val = -Val;
-
-	// Target pitch speed is based in input
-	float TargetPitchSpeed = (Val * TurnSpeed * -1.f);
+	Val = mirroredVertical ? -Val : Val;
 
 	if (!AirRollOn)
 	{
+		// Target pitch speed is based in input
+		float TargetPitchSpeed = (Val * TurnSpeed * -1.f);
+
 		// When steering, we decrease pitch slightly
 		TargetPitchSpeed += (FMath::Abs(CurrentYawSpeed) * -0.2f);
 
@@ -140,7 +139,8 @@ void AFlyingTest1Pawn::MoveUpInput(float Val)
 	}
 	else
 	{
-		PlaneMesh->AddRelativeRotation(FRotator(airRollAmount*Val, 0, 0));
+		printToScreenDebug(Val);
+		PlaneMesh->AddRelativeRotation(FRotator(-(airRollAmount*Val), 0, 0));
 	}
 }
 
