@@ -14,8 +14,8 @@ class AFlyingTest1Pawn : public APawn
 
 	//class UStaticMeshComponent;
 
-	UPROPERTY(EditAnywhere)
-	class UBillboardComponent* billboard;
+	//UPROPERTY()
+	//TSubobjectPtr<class USceneComponent> DummyRoot;
 
 	UPROPERTY(Category = Mesh, VisibleDefaultsOnly, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 		UStaticMeshComponent* PlaneMesh;
@@ -111,7 +111,7 @@ private:
 	FVector getScaledBounds(UStaticMeshComponent* meshComponent);
 
 
-	FVector lastRotationRadians;
+	FQuat lastRotation;
 
 
 

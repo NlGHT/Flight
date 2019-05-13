@@ -23,12 +23,10 @@ AFlyingTest1Pawn::AFlyingTest1Pawn()
 	};
 	static FConstructorStatics ConstructorStatics;
 
-	
-
 	// Create static mesh component
 	PlaneMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("PlaneMesh0"));
 	PlaneMesh->SetStaticMesh(ConstructorStatics.PlaneMesh.Get());	// Set static mesh
-	//RootComponent = PlaneMesh;
+	RootComponent = PlaneMesh;
 
 	// Create a spring arm component
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm0"));
@@ -55,39 +53,19 @@ AFlyingTest1Pawn::AFlyingTest1Pawn()
 
 void AFlyingTest1Pawn::Tick(float DeltaSeconds)
 {
+	// Move plane forwards (with sweep so we stop when we collide with things)
+
 	const FVector LocalMove = FVector(CurrentForwardSpeed * DeltaSeconds, 0.f, 0.f);
 
 	if (AirRollOn)
 	{
-		FTransform planeTransform = PlaneMesh->GetComponentTransform();
-		//FVector planeLocation = planeTransform.GetLocation();
-		FRotator planeRotation = planeTransform.GetRotation().Rotator();
-
-		//FVector planeScaledBounds = getScaledBounds(PlaneMesh);
-		//float mass = PlaneMesh->GetMass();
-		float velocityForward = CurrentForwardSpeed * DeltaSeconds;
-		printToScreenDebug(planeRotation.Vector());
-		//FVector velocityFromComponent = PlaneMesh->GetComponentVelocity();
-		//printToScreenDebug(velocityFromComponent);
-		float x = FMath::Cos(planeRotation.Vector().X)*velocityForward;
-		float y = FMath::Cos(planeRotation.Vector().Y)*velocityForward;
-		float z = FMath::Cos(planeRotation.Vector().Z)*velocityForward;
-		FVector velocityComponents = FVector(x, y, z);
-
-		//PlaneMesh->AddWorldOffset(velocityFromComponent, true);
-		//PlaneMesh->AddWorldTransform(FTransform(FRotator(0), velocityComponents, FVector(0)));
-
-		RootComponent->AddLocalOffset(LocalMove, true);
+		PlaneMesh->AddRelativeLocation(lastRotation.RotateVector(LocalMove), true);
 	}
 	else
 	{
-		RootComponent->AddLocalOffset(LocalMove, true);
+		PlaneMesh->AddLocalOffset(LocalMove, true);
+		
 	}
-	
-	//const FVector LocalMove = FVector(0.f, 0.f, CurrentForwardSpeed * DeltaSeconds);
-	//const FVector LocalMove = FVector(0.f, CurrentForwardSpeed * DeltaSeconds, 0.f);
-
-	// Move plan forwards (with sweep so we stop when we collide with things)
 	
 
 	// Calculate change in rotation this frame
@@ -97,22 +75,13 @@ void AFlyingTest1Pawn::Tick(float DeltaSeconds)
 	DeltaRotation.Roll = CurrentRollSpeed * DeltaSeconds;
 
 	// Rotate plane
-	//AddActorLocalRotation(DeltaRotation);
-	PlaneMesh->AddRelativeRotation(DeltaRotation);
-
-	if (!AirRollOn)
-	{
-		RootComponent->SetWorldRotation(FMath::Lerp(RootComponent->GetComponentRotation(), PlaneMesh->GetComponentRotation(), 4));
-	}
+	AddActorLocalRotation(DeltaRotation);
 
 	float F = PlaneMesh->GetMass() * g;
 	float velocityVectorLength = PlaneMesh->GetComponentVelocity().Size();
 	float lerpedGravity = FMath::Lerp(0.f, F, velocityVectorLength);
 
 	PlaneMesh->AddForce(FVector(0, 0, lerpedGravity));
-	
-	//PlaneMesh->AddForceAtLocationLocal();
-	//PlaneMesh->AddForceAtLocation()
 
 	// Call any parent class Tick implementation
 	Super::Tick(DeltaSeconds);
@@ -138,7 +107,6 @@ void AFlyingTest1Pawn::SetupPlayerInputComponent(class UInputComponent* PlayerIn
 	PlayerInputComponent->BindAxis("MoveUp", this, &AFlyingTest1Pawn::MoveUpInput);
 	PlayerInputComponent->BindAxis("MoveRight", this, &AFlyingTest1Pawn::MoveRightInput);
 	PlayerInputComponent->BindAction("CameraLock", IE_Pressed, this, &AFlyingTest1Pawn::CameraLockToggle);
-
 	PlayerInputComponent->BindAction("AirRoll", IE_Pressed, this, &AFlyingTest1Pawn::OnAirRollPress);
 	PlayerInputComponent->BindAction("AirRoll", IE_Released, this, &AFlyingTest1Pawn::OnAirRollRelease);
 }
@@ -172,13 +140,8 @@ void AFlyingTest1Pawn::MoveUpInput(float Val)
 	}
 	else
 	{
-		PlaneMesh->AddRelativeRotation(FRotator(airRollAmount*Val*0.4, 0, 0));
-
+		PlaneMesh->AddRelativeRotation(FRotator(airRollAmount*Val, 0, 0));
 	}
-
-	
-
-	
 }
 
 void AFlyingTest1Pawn::MoveRightInput(float Val)
@@ -186,7 +149,6 @@ void AFlyingTest1Pawn::MoveRightInput(float Val)
 	if (AirRollOn)
 	{
 		// Air rolling
-		//PlaneMesh->AddLocalRotation(FRotator(0, 0, airRollAmount*Val));
 		PlaneMesh->AddRelativeRotation(FRotator(0, 0, airRollAmount*Val));
 		//printToScreenDebug("Air Rolling");
 	}
@@ -220,8 +182,6 @@ void AFlyingTest1Pawn::CameraLockToggle()
 		SpringArm->bInheritYaw = false;
 
 		SpringArm->SetRelativeRotation(PlaneMesh->GetComponentRotation());
-
-		//printToScreenDebug(lastCameraLockRotation.Vector());
 	}
 	else
 	{
@@ -232,24 +192,15 @@ void AFlyingTest1Pawn::CameraLockToggle()
 		SpringArm->bInheritYaw = true;
 
 		FRotator currentRotation = PlaneMesh->GetComponentRotation();
-		//printToScreenDebug(currentRotation.Vector());
 
 		SpringArm->SetRelativeRotation(FRotator(0));
-		//SpringArm->AddLocalRotation(FRotator(currentRotation.Pitch - lastCameraLockRotation.Pitch, currentRotation.Yaw - lastCameraLockRotation.Yaw, currentRotation.Roll - lastCameraLockRotation.Roll));
 	}
 }
 
 void AFlyingTest1Pawn::OnAirRollPress()
 {
-	FRotator currentRotation = PlaneMesh->GetComponentRotation();
-	//currentRotation.Normalize();
-	float rotationX = (FMath::Clamp(currentRotation.Pitch, -180.f, 180.0f));
-	float rotationY = (FMath::Clamp(currentRotation.Yaw, -180.f, 180.0f));
-	float rotationZ = (FMath::Clamp(currentRotation.Roll, -180.f, 180.0f));
-	//printToScreenDebug(rotationX);
-	//printToScreenDebug(rotationY);
-	//printToScreenDebug(rotationZ);
-	lastRotationRadians = FVector(rotationX, rotationY, rotationZ);
+	lastRotation = PlaneMesh->GetComponentRotation().Quaternion();
+
 	AirRollOn = true;
 }
 
@@ -272,12 +223,7 @@ FVector AFlyingTest1Pawn::getScaledBounds(UStaticMeshComponent * meshComponent)
 	FVector dimensions = FVector(groundMax.X - groundMin.X, groundMax.Y - groundMin.Y, groundMax.Z - groundMin.Z);
 
 	FVector scale = meshComponent->GetComponentTransform().GetScale3D();
-
-	//printToScreenDebug(transformVector);
-	//printToScreenDebug(scale);
-
 	FVector scaledSize = FVector(dimensions.X * scale.X, dimensions.Y * scale.Y, dimensions.Z * scale.Z);
-
 
 	return scaledSize;
 }
