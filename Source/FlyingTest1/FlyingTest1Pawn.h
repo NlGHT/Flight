@@ -11,8 +11,11 @@ class AFlyingTest1Pawn : public APawn
 	GENERATED_BODY()
 
 	/** StaticMesh component that will be the visuals for our flying pawn */
-		
+
 	//class UStaticMeshComponent;
+
+	UPROPERTY(EditAnywhere)
+	class UBillboardComponent* billboard;
 
 	UPROPERTY(Category = Mesh, VisibleDefaultsOnly, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 		UStaticMeshComponent* PlaneMesh;
